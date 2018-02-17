@@ -289,6 +289,7 @@ public final class MVStore {
      * @throws IllegalArgumentException if the directory does not exist
      */
     MVStore(HashMap<String, Object> config) {
+    	System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore初始化完成前=" + this + "; meta如下:" + meta);
         Object o = config.get("compress");
         this.compressionLevel = o == null ? 0 : (Integer) o;
         String fileName = (String) config.get("fileName");
@@ -307,6 +308,7 @@ public final class MVStore {
             pgSplitSize = 48; // number of keys per page in that case
         }
         pageSplitSize = pgSplitSize;
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore pageSplitSize is " + pageSplitSize);
         o = config.get("backgroundExceptionHandler");
         this.backgroundExceptionHandler = (UncaughtExceptionHandler) o;
         meta = new MVMap<String, String>(StringDataType.INSTANCE,
@@ -373,6 +375,8 @@ public final class MVStore {
         o = config.get("autoCommitDelay");
         int delay = o == null ? 1000 : (Integer) o;
         setAutoCommitDelay(delay);
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore初始化完成后=" + this + "; meta=" + meta);
+        System.out.println();
     }
 
     private void panic(IllegalStateException e) {
@@ -448,7 +452,10 @@ public final class MVStore {
         long root;
         HashMap<String, Object> c;
         M map;
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore.openMap=" + this + "; meta=" + meta);
+        System.out.println();
         if (x != null) {
+        	System.out.println("从MVStore.openMap() meta获取到值了; x=" + x);
             id = DataUtils.parseHexInt(x);
             @SuppressWarnings("unchecked")
             M old = (M) maps.get(id);
@@ -460,6 +467,7 @@ public final class MVStore {
             c = New.hashMap();
             c.putAll(DataUtils.parseMap(config));
             c.put("id", id);
+            System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; In MVStore.openMap(),MVMap map = builder.create() is: " +map + "; config=" + c);
             map.init(this, c);
             root = getRootPos(meta, id);
         } else {
@@ -468,11 +476,15 @@ public final class MVStore {
             c.put("id", id);
             c.put("createVersion", currentVersion);
             map = builder.create();
+            System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; In MVStore.openMap(),MVMap map = builder.create() is: " +map + "; config=" + c);
             map.init(this, c);
             markMetaChanged();
             x = Integer.toHexString(id);
+//            System.out.println(Thread id="+ Thread.currentThread().getId() +" MVStore.openMap(String, MapBuilder<M, K, V>)" + )); 
+            System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore.openMap() meta put开始,meta=" + meta + "; key=" + MVMap.getMapKey(id) + "; value=" + map.asString(name) + "; key=" + "name." + name + "; value=" + x);
             meta.put(MVMap.getMapKey(id), map.asString(name));
             meta.put("name." + name, x);
+            System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore.openMap() meta put结束");
             root = 0;
         }
         map.setRootPos(root, -1);
@@ -2192,7 +2204,7 @@ public final class MVStore {
 
     /**
      * This method is called before writing to a map.
-     * 这个方法如果commitAndSave执行过后,就会生成一个chunk(至少一个chunk)
+     *
      * @param map the map
      */
     void beforeWrite(MVMap<?, ?> map) {
@@ -2697,20 +2709,20 @@ public final class MVStore {
 
         @Override
         public void run() {
-            while (true) {
-                Thread t = store.backgroundWriterThread;
-                if (t == null) {
-                    break;
-                }
-                synchronized (sync) {
-                    try {
-                        sync.wait(sleep); //在MVStore.stopBackgroundThread()中通知
-                    } catch (InterruptedException e) {
-                        continue;
-                    }
-                }
-                store.writeInBackground();
-            }
+//            while (true) {
+//                Thread t = store.backgroundWriterThread;
+//                if (t == null) {
+//                    break;
+//                }
+//                synchronized (sync) {
+//                    try {
+//                        sync.wait(sleep); //在MVStore.stopBackgroundThread()中通知
+//                    } catch (InterruptedException e) {
+//                        continue;
+//                    }
+//                }
+//                store.writeInBackground();
+//            }
         }
 
     }

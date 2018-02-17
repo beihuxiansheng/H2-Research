@@ -40,6 +40,8 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * The store.
      */
     protected MVStore store;
+    
+    private Object obj;
 
     /**
      * The current root page (may not be null).
@@ -71,6 +73,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
     protected MVMap(DataType keyType, DataType valueType) {
         this.keyType = keyType;
         this.valueType = valueType;
+        this.obj = new MVTrace();
     }
 
     /**
@@ -104,7 +107,9 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         this.id = DataUtils.readHexInt(config, "id", 0);
         this.createVersion = DataUtils.readHexLong(config, "createVersion", 0);
         this.writeVersion = store.getCurrentVersion();
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.init之前; MVMap=" + this);
         this.root = Page.createEmpty(this,  -1);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.init之后=" + this + "; id=" + this.id + "; store=" + this.store + "; createVersion=" +this.createVersion + "; writeVersion=" + this.writeVersion + "; empty root memory=" + root.getMemory() + "; empty root is:\r\n" + root);
     }
 
     /**
@@ -120,13 +125,15 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         DataUtils.checkArgument(value != null, "The value may not be null");
         beforeWrite();
         long v = writeVersion;
-        //写时复制的一种体现,在往root里面进行写的时候,才将root进行复制,从所有的copy都可以看出,只要是我们进行copy,不管是node节点copy还是leaf节点copy,都必须带上版本号进行copy,也就是copy出来的是一个新的版本号
-        //如果说我们copy之前和copy之后的版本号如果是一样的话呢?如果是一样的话,说明我们在此期间没有进行过commit,这种情况没有关系,我们的oldRoots集合里面就不维护老的版本号就ok了
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put()开始时=" + this +"; writeVersion=" + v +"; old root is leaf:" + root.isLeaf() + "; old root memory=" + root.getMemory() + "; keyLength=" + this.getKeyType().getMemory(key) + "; valueLength=" + this.getValueType().getMemory(value) + "; totalLength=" + (this.getKeyType().getMemory(key) + this.getValueType().getMemory(value)) + "; key=" + key + "; value=" + value + "; old root is:\r\n" + root );
+        System.out.println();
         Page p = root.copy(v);
-        //不管是copy,split,create等等了,只要涉及到在老的page上创建新的page,都必须带上版本号
         p = splitRootIfNeeded(p, v);
         Object result = put(p, v, key, value);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put()进行中,result=" + result);
         newRoot(p);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put()完毕后=" + this +"; writeVersion=" + v +"; new root is leaf:" + root.isLeaf() + "; new root memory=" + root.getMemory() + "; key=" + key + "; value=" + value + "; new root is:\r\n" + root );
+        System.out.println();
         return (V) result;
     }
 
@@ -139,21 +146,27 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      */
     protected Page splitRootIfNeeded(Page p, long writeVersion) {
         if (p.getMemory() <= store.getPageSplitSize() || p.getKeyCount() <= 1) {
+        	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.splitRootIfNeeded() " + this + "; page keyCount=" + p.getKeyCount() + "; page totalCount=" + p.getTotalCount() + "; Paging NO");
             return p;
         }
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.splitRootIfNeeded() " + this + "; page keyCount=" + p.getKeyCount() + "; page totalCount=" + p.getTotalCount() + "; Paging YES");
         int at = p.getKeyCount() / 2;
         long totalCount = p.getTotalCount();
         Object k = p.getKey(at);
         Page split = p.split(at); //p把自己split后被当成左节点
         Object[] keys = { k };
-        Page.PageReference[] children = {
-                new Page.PageReference(p, p.getPos(), p.getTotalCount()),
-                new Page.PageReference(split, split.getPos(), split.getTotalCount()),
+        Page.PageReference pageReference1 = new Page.PageReference(p, p.getPos(), p.getTotalCount());
+		Page.PageReference pageReference2 = new Page.PageReference(split, split.getPos(), split.getTotalCount());
+		System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.splitRootIfNeeded left=" + pageReference1 + "; right=" + pageReference2);
+		Page.PageReference[] children = {
+                pageReference1,
+                pageReference2,
         };
         p = Page.create(this, writeVersion,
                 keys, null,
                 children,
                 totalCount, 0);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.splitRootIfNeeded return page is:\r\n" + p);
         return p;
     }
 
@@ -167,22 +180,28 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * @return the old value, or null
      */
     protected Object put(Page p, long writeVersion, Object key, Object value) {
+    	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put(Page, long, Object, Object) p=" + System.identityHashCode(p) + "; key=" + key + "; value=" + value);
         int index = p.binarySearch(key);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; 原始index=" + index);
         if (p.isLeaf()) {
             if (index < 0) {
+            	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "index < 0");
                 index = -index - 1;
                 p.insertLeaf(index, key, value);
                 return null;
             }
             return p.setValue(index, value);
         }
-        // p is a node(Intermediate node or root node)
+        // p is a node
         if (index < 0) {
             index = -index - 1;
         } else {
             index++; //大于等于split key的在右边节点，所以要加1
         }
-        Page c = p.getChildPage(index).copy(writeVersion);    //写时复制的一种体现,在往child里面进行写的时候,才将child进行复制
+        Page childPage = p.getChildPage(index);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.put(Page, long, Object, Object); childPage= " + System.identityHashCode(childPage));
+		Page c = childPage.copy(writeVersion);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put(Page, long, Object, Object); 根据index=" + index + " 获取childPage=" + System.identityHashCode(c));
         //如果在这里发生split，可能是树叶也可能是非树叶节点
         if (c.getMemory() > store.getPageSplitSize() && c.getKeyCount() > 1) {
             // split on the way down
@@ -711,8 +730,10 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * @param version the version of the root
      */
     void setRootPos(long rootPos, long version) {
+    	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.setRootPos(" + rootPos + ","+ version + ")");
         root = rootPos == 0 ? Page.createEmpty(this, -1) : readPage(rootPos);
         root.setVersion(version);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap获得的newRoot=\r\n" + root);
     }
 
     /**
@@ -943,7 +964,6 @@ public class MVMap<K, V> extends AbstractMap<K, V>
                     break;
                 }
                 // slow, but rollback is not a common operation
-                //为何slow呢?因为要进行大量的数组copy工作
                 oldRoots.removeLast(last);
                 root = last;
                 if (root.getVersion() < version) {
@@ -1119,7 +1139,6 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * @return the opened map
      */
     MVMap<K, V> openReadOnly() {
-        //openReadOnly或者说openOldVersion等,都需要重新new一个MVMap,然后在new出来的MVMap上进行各种二次操作,但是都要设置上readOnly属性为true
         MVMap<K, V> m = new MVMap<K, V>(keyType, valueType);
         m.readOnly = true;
         HashMap<String, Object> config = New.hashMap();
@@ -1227,7 +1246,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
 
     @Override
     public String toString() {
-        return asString(null);
+        return this.obj.toString();
     }
 
     /**
