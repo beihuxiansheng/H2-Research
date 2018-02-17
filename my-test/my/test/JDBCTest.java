@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.Random;
 
 import org.h2.jdbc.JdbcConnection;
 
@@ -16,19 +17,23 @@ public class JDBCTest {
     static Properties prop = new Properties();
     static String url = "jdbc:h2:tcp://localhost:9092/test9";
 
-    public static void main2(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         Class.forName("org.h2.Driver");
 
         Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost:9092/mydb", "sa", "");
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS my_table");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS my_table(name varchar(20))");
-        stmt.executeUpdate("INSERT INTO my_table(name) VALUES('zhh')");
-
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS my_table(id int not null PRIMARY KEY,name varchar(200),lastname varchar(200))");
+        stmt.execute("CREATE INDEX my_test_index  ON my_table (lastname) ");
+        for(int i = 0 ; i < 100 ; i ++){
+        	Random r = new Random();
+        	int n1 = r.nextInt();
+        	int n2 = r.nextInt();
+        	stmt.executeUpdate("INSERT INTO my_table(id,name,lastname) VALUES(" + i + ",'" +i*n1 + "zhh" + i + "','" +i*n2 + "zhh_lastname" + i + "')");
+        }
         ResultSet rs = stmt.executeQuery("SELECT name FROM my_table");
         rs.next();
         System.out.println(rs.getString(1));
-
         stmt.close();
         conn.close();
     }
@@ -67,14 +72,14 @@ public class JDBCTest {
 
     }
 
-    public static void main(String[] args) throws Exception {
-        prop.setProperty("user", "sa");
-        prop.setProperty("password", "");
-
-        // testJdbcConnection();
-        // testJdbcStatement();
-        testBlob();
-    }
+//    public static void main(String[] args) throws Exception {
+//        prop.setProperty("user", "sa");
+//        prop.setProperty("password", "");
+//
+//        // testJdbcConnection();
+//        // testJdbcStatement();
+//        testBlob();
+//    }
 
     public static void testJdbcConnection() throws Exception {
 

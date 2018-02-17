@@ -87,6 +87,7 @@ public class Page {
     Page(MVMap<?, ?> map, long version) {
         this.map = map;
         this.version = version;
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; 开始new Page,pageId=" + System.identityHashCode(this) + "; map=" + map);
     }
 
     /**
@@ -97,6 +98,7 @@ public class Page {
      * @return the new page
      */
     static Page createEmpty(MVMap<?, ?> map, long version) {
+    	System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.createEmpty(MVMap<?, ?>, "+ version +")");
         return create(map, version,
                 EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY,
                 null,
@@ -119,6 +121,7 @@ public class Page {
             Object[] keys, Object[] values, PageReference[] children,
             long totalCount, int memory) {
         Page p = new Page(map, version);
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; 结束new Page,Page.create()=" + System.identityHashCode(p) + "; map=" + map +"; version=" + version + "; keys=" + ( keys == EMPTY_OBJECT_ARRAY ? "占位符" : keys ) +"; values=" + ( values == EMPTY_OBJECT_ARRAY ? "占位符" : values ) + "; children=" + children + "; totalCount=" + totalCount + "; memory="+memory + "\r\n");
         // the position is 0
         p.keys = keys;
         p.values = values;
@@ -147,6 +150,7 @@ public class Page {
      * @return the page
      */
     public static Page create(MVMap<?, ?> map, long version, Page source) {
+    	System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; org.h2.mvstore.Page.create(MVMap<?, ?>, long, Page");
         return create(map, version, source.keys, source.values, source.children,
                 source.totalCount, source.memory);
     }
@@ -276,6 +280,9 @@ public class Page {
                 buff.append(keys[i]);
                 if (values != null) {
                     buff.append(':');
+//                    if(values[i].toString().contains("1/0")){
+//                    	System.out.print("抓到了");
+//                    }
                     buff.append(values[i]);
                 }
             }
@@ -290,6 +297,7 @@ public class Page {
      * @return a page with the given version
      */
     public Page copy(long version) {
+    	System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.copy() version=" + version);
         Page newPage = create(map, version,
                 keys, values,
                 children, totalCount,
@@ -380,6 +388,7 @@ public class Page {
         System.arraycopy(values, a, bValues, 0, b);
         values = aValues;
         totalCount = a;
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.splitLeaf() index=" + at);
         Page newPage = create(map, version,
                 bKeys, bValues,
                 null,
@@ -393,6 +402,7 @@ public class Page {
     }
 
     private Page splitNode(int at) {
+    	System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.splitNode() index=" + at);
         int a = at, b = keys.length - a;
 
         Object[] aKeys = new Object[a];
@@ -522,7 +532,7 @@ public class Page {
         Object old = values[index];
         // this is slightly slower:
         // values = Arrays.copyOf(values, values.length); //只copy引用
-        values = values.clone();
+        values = values.clone();//这里为什么要clone呢?没有想明白
         DataType valueType = map.getValueType();
         if(isPersistent()) {
             addMemory(valueType.getMemory(value) -
@@ -579,6 +589,7 @@ public class Page {
             addMemory(map.getKeyType().getMemory(key) +
                     map.getValueType().getMemory(value));
         }
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +" Page.insertLeaf()=" + System.identityHashCode(this) + "; index=" + index + "; key=" + key + "; value=" + value + "; page.memory=" + memory);
     }
 
     /**
@@ -941,7 +952,9 @@ public class Page {
         } else {
             mem += this.getRawChildPageCount() * DataUtils.PAGE_MEMORY_CHILD;
         }
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +" Page.recalculateMemory() mem=" + mem + "; memory=" + memory + "; keys=" + keys + "; values=" + values);
         addMemory(mem - memory);
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.recalculateMemory()==>memory=" + memory);
     }
 
     void setVersion(long version) {
@@ -986,6 +999,11 @@ public class Page {
             this.pos = pos;
             this.count = count;
         }
+
+		@Override
+		public String toString() {
+			return "PageReference [pos=" + pos + ", page=" + System.identityHashCode(page) + ", count=" + count + "]";
+		}
 
     }
 
