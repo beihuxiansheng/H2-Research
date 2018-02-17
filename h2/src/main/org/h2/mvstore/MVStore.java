@@ -2192,7 +2192,7 @@ public final class MVStore {
 
     /**
      * This method is called before writing to a map.
-     *
+     * 这个方法如果commitAndSave执行过后,就会生成一个chunk(至少一个chunk)
      * @param map the map
      */
     void beforeWrite(MVMap<?, ?> map) {
@@ -2892,7 +2892,7 @@ public final class MVStore {
          * @return this
          */
         public Builder backgroundExceptionHandler(
-                Thread.UncaughtExceptionHandler exceptionHandler) {
+                UncaughtExceptionHandler exceptionHandler) {
             return set("backgroundExceptionHandler", exceptionHandler);
         }
 

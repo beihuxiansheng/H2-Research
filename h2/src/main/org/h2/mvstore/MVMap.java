@@ -120,7 +120,10 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         DataUtils.checkArgument(value != null, "The value may not be null");
         beforeWrite();
         long v = writeVersion;
+        //写时复制的一种体现,在往root里面进行写的时候,才将root进行复制,从所有的copy都可以看出,只要是我们进行copy,不管是node节点copy还是leaf节点copy,都必须带上版本号进行copy,也就是copy出来的是一个新的版本号
+        //如果说我们copy之前和copy之后的版本号如果是一样的话呢?如果是一样的话,说明我们在此期间没有进行过commit,这种情况没有关系,我们的oldRoots集合里面就不维护老的版本号就ok了
         Page p = root.copy(v);
+        //不管是copy,split,create等等了,只要涉及到在老的page上创建新的page,都必须带上版本号
         p = splitRootIfNeeded(p, v);
         Object result = put(p, v, key, value);
         newRoot(p);
@@ -173,13 +176,13 @@ public class MVMap<K, V> extends AbstractMap<K, V>
             }
             return p.setValue(index, value);
         }
-        // p is a node
+        // p is a node(Intermediate node or root node)
         if (index < 0) {
             index = -index - 1;
         } else {
             index++; //大于等于split key的在右边节点，所以要加1
         }
-        Page c = p.getChildPage(index).copy(writeVersion);
+        Page c = p.getChildPage(index).copy(writeVersion);    //写时复制的一种体现,在往child里面进行写的时候,才将child进行复制
         //如果在这里发生split，可能是树叶也可能是非树叶节点
         if (c.getMemory() > store.getPageSplitSize() && c.getKeyCount() > 1) {
             // split on the way down
@@ -824,7 +827,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
     }
 
     @Override
-    public Set<Map.Entry<K, V>> entrySet() {
+    public Set<Entry<K, V>> entrySet() {
         final MVMap<K, V> map = this;
         final Page root = this.root;
         return new AbstractSet<Entry<K, V>>() {
@@ -940,6 +943,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
                     break;
                 }
                 // slow, but rollback is not a common operation
+                //为何slow呢?因为要进行大量的数组copy工作
                 oldRoots.removeLast(last);
                 root = last;
                 if (root.getVersion() < version) {
@@ -1115,6 +1119,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * @return the opened map
      */
     MVMap<K, V> openReadOnly() {
+        //openReadOnly或者说openOldVersion等,都需要重新new一个MVMap,然后在new出来的MVMap上进行各种二次操作,但是都要设置上readOnly属性为true
         MVMap<K, V> m = new MVMap<K, V>(keyType, valueType);
         m.readOnly = true;
         HashMap<String, Object> config = New.hashMap();

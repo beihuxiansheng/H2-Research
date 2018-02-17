@@ -203,7 +203,7 @@ public class TcpServer implements Service {
                 ifExists = true;
             }
         }
-        org.h2.Driver.load();
+        Driver.load();
     }
 
     @Override
@@ -239,9 +239,10 @@ public class TcpServer implements Service {
     public synchronized void start() throws SQLException {
         stop = false;
         try {
+            System.out.println("tcp Server Starting !!!");
             serverSocket = NetUtils.createServerSocket(port, ssl);
         } catch (DbException e) {
-        	//如果启动时没有指定参数-tcpPort，那么在端口被占用时自动选择其他端口，否则直接抛异常
+            //如果启动时没有指定参数-tcpPort，那么在端口被占用时自动选择其他端口，否则直接抛异常
             if (!portIsSet) {
                 serverSocket = NetUtils.createServerSocket(0, ssl);
             } else {
@@ -254,13 +255,14 @@ public class TcpServer implements Service {
 
     @Override
     public void listen() {
-    	//在org.h2.tools.Server.start()中的service.getName() + " (" + service.getURL() + ")";
-    	//listener线程名是: H2 TCP Server (tcp://localhost:9092)
+        //在org.h2.tools.Server.start()中的service.getName() + " (" + service.getURL() + ")";
+        //listener线程名是: H2 TCP Server (tcp://localhost:9092)
         listenerThread = Thread.currentThread();
         String threadName = listenerThread.getName();
         try {
             while (!stop) {
                 Socket s = serverSocket.accept();
+                System.out.println(Thread.currentThread().getId() + "   Tcp Server serverSocket.accept() 后得到的socket为: " + s);
                 //s.setSoTimeout(2000); //我加上的
                 TcpServerThread c = new TcpServerThread(s, this, nextThreadId++);
                 running.add(c);
@@ -278,7 +280,7 @@ public class TcpServer implements Service {
         }
         stopManagementDb();
     }
-    
+
     //测试是否在本地连得上TcpServer，此时listen()已经执行了
     //这个方法会触发建立一个TcpServerThread，
     //不过很快就关掉了，因为没有建立Session对象，也没在SESSIONS表中存入记录。
@@ -447,7 +449,7 @@ public class TcpServer implements Service {
      *            stopped
      */
     public static synchronized void shutdown(String url, String password,
-            boolean force, boolean all) throws SQLException {
+                                             boolean force, boolean all) throws SQLException {
         try {
             int port = Constants.DEFAULT_TCP_PORT;
             int idx = url.lastIndexOf(':');
@@ -459,7 +461,7 @@ public class TcpServer implements Service {
             }
             String db = getManagementDbName(port);
             try {
-                org.h2.Driver.load();
+                Driver.load();
             } catch (Throwable e) {
                 throw DbException.convert(e);
             }
