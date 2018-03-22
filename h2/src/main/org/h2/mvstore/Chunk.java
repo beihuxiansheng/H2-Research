@@ -160,6 +160,7 @@ public class Chunk {
                     "Chunk metadata too long");
         }
         buff.put((byte) '\n');
+        System.out.println("Chunk               Thread id="+ Thread.currentThread().getId() + "; Chunk header size=" + buff.position());
     }
 
     /**

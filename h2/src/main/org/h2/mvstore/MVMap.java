@@ -180,12 +180,12 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * @return the old value, or null
      */
     protected Object put(Page p, long writeVersion, Object key, Object value) {
-    	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put(Page, long, Object, Object) p=" + System.identityHashCode(p) + "; key=" + key + "; value=" + value);
+    	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put(Page, writeVersion, key, value) p=" + System.identityHashCode(p) + "; writeVersion=" + writeVersion + "; key=" + key + "; value=" + value);
         int index = p.binarySearch(key);
         System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; 原始index=" + index);
         if (p.isLeaf()) {
             if (index < 0) {
-            	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "index < 0");
+            	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; index < 0");
                 index = -index - 1;
                 p.insertLeaf(index, key, value);
                 return null;
@@ -198,12 +198,14 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         } else {
             index++; //大于等于split key的在右边节点，所以要加1
         }
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.put(Page, writeVersion, key, value); 从node获得的index=" + index);
         Page childPage = p.getChildPage(index);
-        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.put(Page, long, Object, Object); childPage= " + System.identityHashCode(childPage));
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.put(Page, writeVersion, key, value); 获取的		childPage=" + System.identityHashCode(childPage));
 		Page c = childPage.copy(writeVersion);
-        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.put(Page, long, Object, Object); 根据index=" + index + " 获取childPage=" + System.identityHashCode(c));
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.put(Page, writeVersion, key, value); copy后的		childPage=" + System.identityHashCode(c));
         //如果在这里发生split，可能是树叶也可能是非树叶节点
         if (c.getMemory() > store.getPageSplitSize() && c.getKeyCount() > 1) {
+        	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; 获取的子页面也需要再进行 split !!!");
             // split on the way down
             int at = c.getKeyCount() / 2;
             Object k = c.getKey(at);
@@ -680,6 +682,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
                     oldRoots.add(root);
                 }
             }
+            System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; "+ this + " 保存的老记录oldRoots=" + oldRoots);
             root = newRoot;
         }
     }
@@ -730,10 +733,10 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      * @param version the version of the root
      */
     void setRootPos(long rootPos, long version) {
-    	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.setRootPos(" + rootPos + ","+ version + ")");
+    	System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() +"; MVMap.setRootPos(rootPos->" + rootPos + ",version->"+ version + ")开始; MVMap=" + this);
         root = rootPos == 0 ? Page.createEmpty(this, -1) : readPage(rootPos);
         root.setVersion(version);
-        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap获得的newRoot=\r\n" + root);
+        System.out.println("MVMap               Thread id="+ Thread.currentThread().getId() + "; MVMap.setRootPos(rootPos->" + rootPos + ",version->"+ version + ")结束; MVMap获得的 newRoot=\r\n" + root);
     }
 
     /**

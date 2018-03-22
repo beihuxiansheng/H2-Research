@@ -15,8 +15,15 @@ import java.util.Iterator;
  * @param <K> the key type
  */
 public class ConcurrentArrayList<K> {
+	
+	
 
-    /**
+    @Override
+	public String toString() {
+		return "ConcurrentArrayList [array=\r\n" + Arrays.toString(array) + "]\r\n";
+	}
+
+	/**
      * The array.
      */
     @SuppressWarnings("unchecked")

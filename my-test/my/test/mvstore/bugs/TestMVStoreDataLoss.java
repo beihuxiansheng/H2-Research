@@ -19,7 +19,7 @@ public class TestMVStoreDataLoss {
 
 	@Test
 	public void testDataLoss() throws Exception {
-		String fileName = "E:/H2/baseDir/testDataLoss";
+		String fileName = "D:/h2database/baseDir/testDataLoss";
 		FileUtils.deleteRecursive(fileName, true);
 
 		MVStore store = getMVStore(fileName);

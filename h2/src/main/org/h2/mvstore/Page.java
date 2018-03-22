@@ -589,7 +589,7 @@ public class Page {
             addMemory(map.getKeyType().getMemory(key) +
                     map.getValueType().getMemory(value));
         }
-        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +" Page.insertLeaf()=" + System.identityHashCode(this) + "; index=" + index + "; key=" + key + "; value=" + value + "; page.memory=" + memory);
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.insertLeaf()=" + System.identityHashCode(this) + "; index=" + index + "; totalCount=" + totalCount + "; key=" + key + "; value=" + value + "; page.memory=" + memory);
     }
 
     /**
@@ -952,7 +952,7 @@ public class Page {
         } else {
             mem += this.getRawChildPageCount() * DataUtils.PAGE_MEMORY_CHILD;
         }
-        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +" Page.recalculateMemory() mem=" + mem + "; memory=" + memory + "; keys=" + keys + "; values=" + values);
+        System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.recalculateMemory() mem=" + mem + "; memory=" + memory + "; keys=" + keys + "; values=" + values);
         addMemory(mem - memory);
         System.out.println("Page                Thread id="+ Thread.currentThread().getId() +"; Page.recalculateMemory()==>memory=" + memory);
     }

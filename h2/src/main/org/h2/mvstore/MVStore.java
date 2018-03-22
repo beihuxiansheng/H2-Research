@@ -303,7 +303,8 @@ public final class MVStore {
         if (o != null) {
             pgSplitSize = (Integer) o;
         } else if(fileStore != null) {
-            pgSplitSize = 16 * 1024;
+//            pgSplitSize = 16 * 1024;
+            pgSplitSize = 2 * 1024;
         } else {
             pgSplitSize = 48; // number of keys per page in that case
         }
@@ -316,6 +317,7 @@ public final class MVStore {
         HashMap<String, Object> c = New.hashMap();
         c.put("id", 0);
         c.put("createVersion", currentVersion);
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; 获取MVStore的meta,config=" + c);
         meta.init(this, c);
         if (fileStore == null) {
             cache = null;
@@ -480,9 +482,8 @@ public final class MVStore {
             map.init(this, c);
             markMetaChanged();
             x = Integer.toHexString(id);
-//            System.out.println(Thread id="+ Thread.currentThread().getId() +" MVStore.openMap(String, MapBuilder<M, K, V>)" + )); 
             System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore.openMap() meta put开始,meta=" + meta + "; key=" + MVMap.getMapKey(id) + "; value=" + map.asString(name) + "; key=" + "name." + name + "; value=" + x);
-            meta.put(MVMap.getMapKey(id), map.asString(name));
+            meta.put(MVMap.getMapKey(id), map.asString(name));	//put(map.id,config)
             meta.put("name." + name, x);
             System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() +"; MVStore.openMap() meta put结束");
             root = 0;
@@ -1140,6 +1141,7 @@ public final class MVStore {
         // need to patch the header later
         c.writeChunkHeader(buff, 0);
         int headerLength = buff.position();
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; Chunk headerLength=" + headerLength);
         c.pageCount = 0;
         c.pageCountLive = 0;
         c.maxLen = 0;
@@ -1161,21 +1163,26 @@ public final class MVStore {
         metaRoot.writeUnsavedRecursive(c, buff);
 
         int chunkLength = buff.position();
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; Chunk chunkLength=" + chunkLength);
+        System.out.println("");
 
         // add the store header and round to the next block
         int length = MathUtils.roundUpInt(chunkLength +
                 Chunk.FOOTER_LENGTH, BLOCK_SIZE);
         buff.limit(length);
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; buff length=" + length);
 
         // the length of the file that is still in use
         // (not necessarily the end of the file)
         long end = getFileLengthInUse();
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; File Length In Use=" + end);
         long filePos;
         if (reuseSpace) {
             filePos = fileStore.allocate(length);
         } else {
             filePos = end;
         }
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; FilePos=" + end);
         // end is not necessarily the end of the file
         boolean storeAtEndOfFile = filePos + length >= fileStore.size();
 
@@ -1187,7 +1194,9 @@ public final class MVStore {
         }
 
         c.block = filePos / BLOCK_SIZE;
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; Chunk c.block=" + c.block);
         c.len = length / BLOCK_SIZE;
+        System.out.println("MVStore             Thread id="+ Thread.currentThread().getId() + "; Chunk c.len=" + c.len);
         c.metaRootPos = metaRoot.getPos();
         // calculate and set the likely next position
         if (reuseSpace) {
